@@ -544,6 +544,82 @@ nav ul li a:hover {
     color: var(--text-primary);
 }
 
+.workshop-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.workshop-actions .btn {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    min-width: auto;
+}
+
+.workshop-experts {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--primary-color);
+}
+
+.workshop-experts strong {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.expert-tag {
+    background: var(--primary-color);
+    color: var(--bg-dark);
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+    display: inline-block;
+    margin-bottom: 0.25rem;
+}
+
+.workshop-highlights {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--success-color);
+}
+
+.workshop-highlights strong {
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.workshop-highlights ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.workshop-highlights li {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.workshop-highlights li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--success-color);
+    font-weight: bold;
+}
+
 /* Past Workshops Section */
 .past-workshops {
     background: var(--bg-secondary);
@@ -1018,6 +1094,27 @@ nav ul li a:focus {
     .filter-container input {
         width: 100%;
         max-width: 300px;
+    }
+    
+    .workshop-actions {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .workshop-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .workshop-experts,
+    .workshop-highlights {
+        padding: 0.5rem;
+    }
+    
+    .expert-tag {
+        display: block;
+        margin-bottom: 0.5rem;
+        text-align: center;
     }
 
     .stats {

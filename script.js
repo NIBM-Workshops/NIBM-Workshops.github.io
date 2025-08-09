@@ -42,181 +42,405 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Enhanced workshop data with more details
-    const workshops = {
-        upcoming: [
-            {
-                id: 1,
-                title: "Advanced Web Development with React",
-                category: "technology",
-                date: "2024-01-15",
-                description: "Learn to build modern web applications using React, Redux, and React Router. Master state management and component architecture.",
-                instructor: "Dr. Sanjaya Gamage",
-                image: "https://source.unsplash.com/random/600x400/?web,development,react",
-                duration: "2 days",
-                level: "Intermediate"
-            },
-            {
-                id: 2,
-                title: "Data Science Fundamentals",
-                category: "technology",
-                date: "2024-01-20",
-                description: "Introduction to data science concepts with Python and Jupyter notebooks. Learn data analysis and visualization techniques.",
-                instructor: "Prof. Nimal Perera",
-                image: "https://source.unsplash.com/random/600x400/?data,science,python",
-                duration: "3 days",
-                level: "Beginner"
-            },
-            {
-                id: 3,
-                title: "Digital Marketing Strategies",
-                category: "business",
-                date: "2024-02-05",
-                description: "Learn effective digital marketing techniques for the modern business landscape. SEO, SEM, and social media marketing.",
-                instructor: "Ms. Anoma Silva",
-                image: "https://source.unsplash.com/random/600x400/?marketing,digital,business",
-                duration: "1 day",
-                level: "All Levels"
-            },
-            {
-                id: 4,
-                title: "UI/UX Design Principles",
-                category: "design",
-                date: "2024-02-15",
-                description: "Master the fundamentals of user interface and user experience design. Learn design thinking and prototyping.",
-                instructor: "Mr. Kamal Fernando",
-                image: "https://source.unsplash.com/random/600x400/?design,ui,ux",
-                duration: "2 days",
-                level: "Beginner"
-            },
-            {
-                id: 5,
-                title: "Machine Learning Basics",
-                category: "technology",
-                date: "2024-02-25",
-                description: "Introduction to machine learning algorithms and their applications. Hands-on experience with real datasets.",
-                instructor: "Dr. Sunil Rathnayake",
-                image: "https://source.unsplash.com/random/600x400/?machine,learning,ai",
-                duration: "3 days",
-                level: "Intermediate"
-            },
-            {
-                id: 6,
-                title: "Business Analytics",
-                category: "business",
-                date: "2024-03-10",
-                description: "Learn to analyze business data and make data-driven decisions. Excel, SQL, and visualization tools.",
-                instructor: "Mr. Rajitha Kuruppu",
-                image: "https://source.unsplash.com/random/600x400/?analytics,business,data",
-                duration: "2 days",
-                level: "Intermediate"
-            }
-        ],
-        past: [
-            {
-                id: 7,
-                title: "Python Programming Basics",
-                category: "technology",
-                date: "2023-12-10",
-                description: "Introduction to Python programming for beginners. Learn syntax, data structures, and basic algorithms.",
-                instructor: "Dr. Sunil Rathnayake",
-                image: "https://source.unsplash.com/random/600x400/?python,code,programming",
-                duration: "2 days",
-                level: "Beginner"
-            },
-            {
-                id: 8,
-                title: "Entrepreneurship Workshop",
-                category: "business",
-                date: "2023-11-20",
-                description: "Learn how to start and grow your own business. Business planning, funding, and market analysis.",
-                instructor: "Mr. Rajitha Kuruppu",
-                image: "https://source.unsplash.com/random/600x400/?business,entrepreneur,startup",
-                duration: "1 day",
-                level: "All Levels"
-            },
-            {
-                id: 9,
-                title: "Graphic Design Fundamentals",
-                category: "design",
-                date: "2023-10-15",
-                description: "Introduction to graphic design using Adobe tools. Learn typography, color theory, and layout principles.",
-                instructor: "Ms. Priyanka Bandara",
-                image: "https://source.unsplash.com/random/600x400/?graphic,design,adobe",
-                duration: "2 days",
-                level: "Beginner"
-            },
-            {
-                id: 10,
-                title: "Academic Research Methods",
-                category: "research",
-                date: "2023-09-05",
-                description: "Learn proper research methodologies for academic writing. Literature review, data collection, and analysis.",
-                instructor: "Dr. Harsha Wijayawardhana",
-                image: "https://source.unsplash.com/random/600x400/?research,books,academic",
-                duration: "3 days",
-                level: "Advanced"
-            },
-            {
-                id: 11,
-                title: "Cloud Computing with AWS",
-                category: "technology",
-                date: "2023-08-18",
-                description: "Introduction to cloud computing using Amazon Web Services. EC2, S3, and basic cloud architecture.",
-                instructor: "Mr. Asanka Gunawardana",
-                image: "https://source.unsplash.com/random/600x400/?cloud,aws,server",
-                duration: "2 days",
-                level: "Intermediate"
-            },
-            {
-                id: 12,
-                title: "Financial Management",
-                category: "business",
-                date: "2023-07-22",
-                description: "Learn essential financial management skills for businesses. Budgeting, forecasting, and financial analysis.",
-                instructor: "Dr. Manoj Karunaratne",
-                image: "https://source.unsplash.com/random/600x400/?finance,money,business",
-                duration: "2 days",
-                level: "Intermediate"
-            }
-        ]
+    // GitHub API configuration
+    const GITHUB_API_BASE = 'https://api.github.com';
+    const ORGANIZATION = 'NIBM-Workshops';
+    
+    // Workshop data structure
+    let workshops = {
+        upcoming: [],
+        past: []
     };
+
+    // Fetch repositories from GitHub organization
+    async function fetchRepositories() {
+        try {
+            const response = await fetch(`${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos?per_page=100&sort=updated`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/vnd.github.v3+json',
+                    'User-Agent': 'NIBM-Workshops-Website'
+                }
+            });
+            
+            console.log('GitHub API Response Status:', response.status);
+            console.log('GitHub API Response Headers:', response.headers);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('GitHub API Error Response:', errorText);
+                
+                // Check if it's a rate limit error
+                if (response.status === 403 && errorText.includes('rate limit')) {
+                    console.log('Rate limit exceeded, using fallback repository list');
+                    return getFallbackRepositories();
+                }
+                
+                throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+            }
+            
+            const repos = await response.json();
+            console.log('Fetched repositories:', repos.map(r => r.name));
+            return repos;
+        } catch (error) {
+            console.error('Error fetching repositories:', error);
+            console.log('Using fallback repository list due to error');
+            return getFallbackRepositories();
+        }
+    }
+
+    // Fallback repository list when GitHub API is rate limited
+    function getFallbackRepositories() {
+        console.log('Using fallback repository list');
+        return [
+            { name: 'Git-Github' },
+            { name: 'NIBM-Workshops.github.io' }
+            // Add more repositories as needed
+        ];
+    }
+
+    // Function to manually add a repository to test
+    window.addRepositoryToTest = function(repoName) {
+        console.log(`Adding repository to test: ${repoName}`);
+        const testRepo = { name: repoName };
+        const testWorkshop = parseWorkshopFromReadme('', repoName); // Will fetch README separately
+        console.log(`Test workshop object for ${repoName}:`, testWorkshop);
+        
+        // Fetch README for this specific repository
+        fetchReadme(repoName).then(content => {
+            if (content) {
+                const workshop = parseWorkshopFromReadme(content, repoName);
+                console.log(`Parsed workshop for ${repoName}:`, workshop);
+                
+                // Add to workshops list
+                if (workshop.category === 'upcoming') {
+                    workshops.upcoming.push(workshop);
+                } else {
+                    workshops.past.push(workshop);
+                }
+                
+                // Refresh display
+                displayWorkshops(workshops.upcoming, 'upcomingWorkshops');
+                displayWorkshops(workshops.past, 'pastWorkshops', false);
+            }
+        });
+    };
+
+    // Fetch README content from a repository using raw GitHub URL
+    async function fetchReadme(repoName) {
+        try {
+            // Try main branch first
+            let rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/main/README.md`;
+            console.log(`Fetching README from: ${rawUrl}`);
+            
+            let response = await fetch(rawUrl);
+            
+            // If main branch doesn't work, try master branch
+            if (!response.ok) {
+                console.log(`Main branch failed, trying master branch for ${repoName}`);
+                rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/master/README.md`;
+                response = await fetch(rawUrl);
+            }
+            
+            // If still not found, try README.md in root
+            if (!response.ok) {
+                console.log(`Master branch failed, trying root README for ${repoName}`);
+                rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/README.md`;
+                response = await fetch(rawUrl);
+            }
+            
+            if (!response.ok) {
+                console.log(`No README found for ${repoName} (Status: ${response.status})`);
+                return null;
+            }
+            
+            const content = await response.text();
+            console.log(`README content for ${repoName}:`, content.substring(0, 200) + '...');
+            return content;
+        } catch (error) {
+            console.error(`Error fetching README for ${repoName}:`, error);
+            return null;
+        }
+    }
+
+    // Parse workshop information from README content
+    function parseWorkshopFromReadme(readmeContent, repoName) {
+        const workshop = {
+            id: repoName,
+            title: repoName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            category: 'technology', // default category
+            date: null,
+            description: '',
+            instructor: '',
+            image: `https://source.unsplash.com/random/600x400/?${repoName}`,
+            duration: '1 day',
+            level: 'All Levels',
+            repoUrl: `https://github.com/${ORGANIZATION}/${repoName}`,
+            readmeUrl: `https://github.com/${ORGANIZATION}/${repoName}#readme`,
+            whyAttend: [],
+            featuredExperts: [],
+            hostedBy: '',
+            registrationLink: ''
+        };
+
+        // Extract workshop title from the first heading
+        const titleMatch = readmeContent.match(/^#\s+(.+?)(?:\s*🚀)?$/m);
+        if (titleMatch) {
+            workshop.title = titleMatch[1].trim();
+        }
+
+        // Extract description from the first paragraph after the title
+        const descriptionMatch = readmeContent.match(/\*\*(.+?)\*\*\s*(.+?)(?=\n\n|\n##|\n#)/s);
+        if (descriptionMatch) {
+            workshop.description = (descriptionMatch[1] + ' ' + descriptionMatch[2]).trim();
+        }
+
+        // Extract image from markdown image syntax
+        const imageMatch = readmeContent.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
+        if (imageMatch) {
+            workshop.image = imageMatch[1];
+        }
+
+        // Extract featured experts
+        const expertsMatch = readmeContent.match(/## 👨‍💻 Featured Experts\s*\n((?:- \*\*.*?\*\*.*?\n?)+)/s);
+        if (expertsMatch) {
+            const expertsText = expertsMatch[1];
+            const expertMatches = expertsText.matchAll(/- \*\*(.*?)\*\* \((.*?)\)/g);
+            for (const match of expertMatches) {
+                workshop.featuredExperts.push({
+                    name: match[1].trim(),
+                    role: match[2].trim()
+                });
+            }
+            // Set the first expert as the main instructor
+            if (workshop.featuredExperts.length > 0) {
+                workshop.instructor = workshop.featuredExperts[0].name;
+            }
+        }
+
+        // Extract "Why Attend" points
+        const whyAttendMatch = readmeContent.match(/## 🔥 Why Attend\?\s*\n((?:- \*\*.*?\*\*.*?\n?)+)/s);
+        if (whyAttendMatch) {
+            const whyAttendText = whyAttendMatch[1];
+            const pointMatches = whyAttendText.matchAll(/- \*\*(.*?)\*\* (.*?)(?=\n-|\n$)/g);
+            for (const match of pointMatches) {
+                workshop.whyAttend.push({
+                    title: match[1].trim(),
+                    description: match[2].trim()
+                });
+            }
+        }
+
+        // Extract hosted by information
+        const hostedByMatch = readmeContent.match(/## 📍 Hosted by\s*\n\*\*(.*?)\*\*/s);
+        if (hostedByMatch) {
+            workshop.hostedBy = hostedByMatch[1].trim();
+        }
+
+        // Extract registration link
+        const registrationMatch = readmeContent.match(/\[Register Now\]\((https?:\/\/[^\s)]+)\)/);
+        if (registrationMatch) {
+            workshop.registrationLink = registrationMatch[1];
+        }
+
+        // Extract date from various patterns in the content
+        const datePatterns = [
+            /(\w{3}\s+\d{1,2},?\s+\d{4})/i, // Aug 12, 2025
+            /(\d{4}-\d{2}-\d{2})/, // 2025-08-12
+            /(\d{1,2}\/\d{1,2}\/\d{4})/, // 12/08/2025
+            /(\d{1,2}\s+\w{3}\s+\d{4})/i, // 12 Aug 2025
+        ];
+
+        for (const pattern of datePatterns) {
+            const match = readmeContent.match(pattern);
+            if (match) {
+                try {
+                    const date = new Date(match[1]);
+                    if (!isNaN(date.getTime())) {
+                        workshop.date = date.toISOString().split('T')[0];
+                        break;
+                    }
+                } catch (e) {
+                    // Continue to next pattern
+                }
+            }
+        }
+
+        // Extract duration from content (look for patterns like "3 hours", "2 days", etc.)
+        const durationMatch = readmeContent.match(/(\d+)\s+(hours?|days?|weeks?)/i);
+        if (durationMatch) {
+            const number = durationMatch[1];
+            const unit = durationMatch[2].toLowerCase();
+            workshop.duration = `${number} ${unit}`;
+        }
+
+        // Extract level from content
+        if (readmeContent.toLowerCase().includes('beginner')) {
+            workshop.level = 'Beginner';
+        } else if (readmeContent.toLowerCase().includes('intermediate')) {
+            workshop.level = 'Intermediate';
+        } else if (readmeContent.toLowerCase().includes('advanced')) {
+            workshop.level = 'Advanced';
+        } else {
+            workshop.level = 'All Levels';
+        }
+
+        // Determine category based on content
+        const content = readmeContent.toLowerCase();
+        if (content.includes('git') || content.includes('version control') || content.includes('programming')) {
+            workshop.category = 'technology';
+        } else if (content.includes('business') || content.includes('management') || content.includes('marketing')) {
+            workshop.category = 'business';
+        } else if (content.includes('design') || content.includes('ui') || content.includes('ux')) {
+            workshop.category = 'design';
+        } else if (content.includes('research') || content.includes('academic')) {
+            workshop.category = 'research';
+        }
+
+        // If no description found, use a default one
+        if (!workshop.description) {
+            workshop.description = `Join our ${workshop.title} workshop to enhance your skills and knowledge.`;
+        }
+
+        // If no instructor found, use a default one
+        if (!workshop.instructor) {
+            workshop.instructor = 'NIBM Expert';
+        }
+
+        // Determine if workshop is upcoming or past
+        if (workshop.date) {
+            const workshopDate = new Date(workshop.date);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            if (workshopDate >= today) {
+                workshop.category = 'upcoming';
+            } else {
+                workshop.category = 'past';
+            }
+        } else {
+            // If no date found, assume it's upcoming
+            workshop.category = 'upcoming';
+            workshop.date = new Date().toISOString().split('T')[0];
+        }
+
+        return workshop;
+    }
+
+    // Load workshops from GitHub repositories
+    async function loadWorkshopsFromGitHub() {
+        const upcomingContainer = document.getElementById('upcomingWorkshops');
+        const pastContainer = document.getElementById('pastWorkshops');
+
+        // Show loading state
+        upcomingContainer.innerHTML = '<div class="loading-container"><div class="loading"></div><p>Loading workshops from GitHub...</p></div>';
+        pastContainer.innerHTML = '<div class="loading-container"><div class="loading"></div><p>Loading past workshops...</p></div>';
+
+        try {
+            console.log('Starting to fetch repositories from GitHub...');
+            const repos = await fetchRepositories();
+            
+            if (repos.length === 0) {
+                console.log('No repositories found');
+                upcomingContainer.innerHTML = `
+                    <div class="no-workshops">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>No repositories found</h3>
+                        <p>Unable to load workshops from GitHub. Please check your internet connection.</p>
+                    </div>
+                `;
+                pastContainer.innerHTML = `
+                    <div class="no-workshops">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>No repositories found</h3>
+                        <p>Unable to load workshops from GitHub. Please check your internet connection.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            console.log(`Found ${repos.length} repositories, fetching README files...`);
+
+            // Fetch README for each repository
+            const workshopPromises = repos.map(async (repo) => {
+                console.log(`Fetching README for repository: ${repo.name}`);
+                const readmeContent = await fetchReadme(repo.name);
+                if (readmeContent) {
+                    const workshop = parseWorkshopFromReadme(readmeContent, repo.name);
+                    console.log(`Parsed workshop for ${repo.name}:`, workshop);
+                    return workshop;
+                }
+                console.log(`No README content found for ${repo.name}`);
+                return null;
+            });
+
+            const workshopResults = await Promise.all(workshopPromises);
+            const validWorkshops = workshopResults.filter(workshop => workshop !== null);
+            
+            console.log(`Successfully parsed ${validWorkshops.length} workshops:`, validWorkshops);
+
+            // Separate upcoming and past workshops
+            workshops.upcoming = validWorkshops.filter(workshop => workshop.category === 'upcoming');
+            workshops.past = validWorkshops.filter(workshop => workshop.category === 'past');
+
+            console.log(`Upcoming workshops: ${workshops.upcoming.length}`, workshops.upcoming);
+            console.log(`Past workshops: ${workshops.past.length}`, workshops.past);
+
+            // Display workshops
+            displayWorkshops(workshops.upcoming, 'upcomingWorkshops');
+            displayWorkshops(workshops.past, 'pastWorkshops', false);
+
+        } catch (error) {
+            console.error('Error loading workshops:', error);
+            upcomingContainer.innerHTML = `
+                <div class="no-workshops">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error loading workshops</h3>
+                    <p>There was an error loading workshops from GitHub. Please try again later.</p>
+                    <p><small>Error: ${error.message}</small></p>
+                </div>
+            `;
+            pastContainer.innerHTML = `
+                <div class="no-workshops">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Error loading workshops</h3>
+                    <p>There was an error loading workshops from GitHub. Please try again later.</p>
+                    <p><small>Error: ${error.message}</small></p>
+                </div>
+            `;
+        }
+    }
 
     // Enhanced workshop display with loading states and animations
     function displayWorkshops(workshops, containerId, isUpcoming = true) {
         const container = document.getElementById(containerId);
-        
-        // Show loading state
-        container.innerHTML = '<div class="loading-container"><div class="loading"></div><p>Loading workshops...</p></div>';
-        
-        // Simulate loading delay for better UX
-        setTimeout(() => {
-            container.innerHTML = '';
             
             if (workshops.length === 0) {
                 container.innerHTML = `
                     <div class="no-workshops">
                         <i class="fas fa-search"></i>
                         <h3>No workshops found</h3>
-                        <p>Try adjusting your filters or search terms.</p>
+                    <p>${isUpcoming ? 'No upcoming workshops scheduled at the moment.' : 'No past workshops found.'}</p>
                     </div>
                 `;
                 return;
             }
+        
+        container.innerHTML = '';
             
             workshops.forEach((workshop, index) => {
                 const workshopCard = document.createElement('div');
                 workshopCard.className = 'workshop-card';
                 workshopCard.style.animationDelay = `${index * 0.1}s`;
                 
-                const formattedDate = new Date(workshop.date).toLocaleDateString('en-US', {
+            const formattedDate = workshop.date ? new Date(workshop.date).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
-                });
+            }) : 'TBD';
                 
-                const daysUntil = Math.ceil((new Date(workshop.date) - new Date()) / (1000 * 60 * 60 * 24));
-                const dateStatus = daysUntil > 0 ? `${daysUntil} days away` : 'Today';
+            const daysUntil = workshop.date ? Math.ceil((new Date(workshop.date) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+            const dateStatus = daysUntil !== null ? (daysUntil > 0 ? `${daysUntil} days away` : 'Today') : '';
                 
                 workshopCard.innerHTML = `
                     <div class="workshop-image">
@@ -235,29 +459,56 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="workshop-date">
                             <i class="far fa-calendar-alt"></i>
                             ${formattedDate}
-                            ${isUpcoming ? `<span class="date-status">${dateStatus}</span>` : ''}
+                        ${isUpcoming && dateStatus ? `<span class="date-status">${dateStatus}</span>` : ''}
+                    </div>
+                    <p class="workshop-description">${workshop.description}</p>
+                    ${workshop.featuredExperts.length > 0 ? `
+                        <div class="workshop-experts">
+                            <strong><i class="fas fa-users"></i> Featured Experts:</strong>
+                            ${workshop.featuredExperts.map(expert => 
+                                `<span class="expert-tag">${expert.name} (${expert.role})</span>`
+                            ).join(', ')}
                         </div>
-                        <p class="workshop-description">${workshop.description}</p>
+                    ` : ''}
+                    ${workshop.whyAttend.length > 0 ? `
+                        <div class="workshop-highlights">
+                            <strong><i class="fas fa-star"></i> Key Benefits:</strong>
+                            <ul>
+                                ${workshop.whyAttend.slice(0, 2).map(point => 
+                                    `<li>${point.title}: ${point.description}</li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
                         <div class="workshop-footer">
                             <div class="workshop-instructor">
                                 <img src="https://source.unsplash.com/random/100x100/?portrait,${workshop.instructor.split(' ')[0]}" alt="${workshop.instructor}" loading="lazy">
                                 <span>${workshop.instructor}</span>
                             </div>
+                        <div class="workshop-actions">
                             ${isUpcoming ? 
-                                `<button class="btn btn-success" onclick="registerWorkshop(${workshop.id})">
+                                (workshop.registrationLink ? 
+                                    `<a href="${workshop.registrationLink}" class="btn btn-success" target="_blank" rel="noopener">
+                                        <i class="fas fa-user-plus"></i> Register Now
+                                    </a>` :
+                                    `<button class="btn btn-success" onclick="registerWorkshop('${workshop.id}')">
                                     <i class="fas fa-user-plus"></i> Register
-                                </button>` : 
+                                    </button>`
+                                ) : 
                                 `<button class="btn btn-outline" disabled>
                                     <i class="fas fa-check-circle"></i> Completed
                                 </button>`
                             }
+                            <a href="${workshop.repoUrl}" class="btn btn-outline" target="_blank" rel="noopener">
+                                <i class="fab fa-github"></i> View Details
+                            </a>
+                        </div>
                         </div>
                     </div>
                 `;
                 
                 container.appendChild(workshopCard);
             });
-        }, 500);
     }
 
     // Get category icon
@@ -266,7 +517,9 @@ document.addEventListener('DOMContentLoaded', function() {
             technology: 'laptop-code',
             business: 'briefcase',
             design: 'palette',
-            research: 'microscope'
+            research: 'microscope',
+            upcoming: 'calendar-alt',
+            past: 'history'
         };
         return icons[category] || 'book';
     }
@@ -295,9 +548,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Initial display with animation
-    displayWorkshops(workshops.upcoming, 'upcomingWorkshops');
-    displayWorkshops(workshops.past, 'pastWorkshops', false);
+    // Load workshops from GitHub on page load
+    loadWorkshopsFromGitHub();
+    
+    // Add a refresh button for manual reloading
+    window.refreshWorkshops = function() {
+        console.log('Manually refreshing workshops...');
+        loadWorkshopsFromGitHub();
+    };
+
+    // Test function specifically for Git-Github repository
+    window.testGitGithubReadme = async function() {
+        console.log('Testing Git-Github README fetch...');
+        try {
+            const rawUrl = 'https://raw.githubusercontent.com/NIBM-Workshops/Git-Github/main/README.md';
+            console.log('Fetching from:', rawUrl);
+            
+            const response = await fetch(rawUrl);
+            console.log('Response status:', response.status);
+            
+            if (response.ok) {
+                const content = await response.text();
+                console.log('Git-Github README content:', content);
+                
+                // Test parsing
+                const workshop = parseWorkshopFromReadme(content, 'Git-Github');
+                console.log('Parsed workshop data:', workshop);
+                
+                return workshop;
+            } else {
+                console.error('Failed to fetch Git-Github README:', response.status);
+                return null;
+            }
+        } catch (error) {
+            console.error('Error testing Git-Github README:', error);
+            return null;
+        }
+    };
 
     // Enhanced filter event listeners with debouncing
     document.getElementById('upcomingFilter').addEventListener('change', function() {
@@ -379,6 +666,59 @@ document.addEventListener('DOMContentLoaded', function() {
         if (workshop) {
             // Show registration modal or notification
             alert(`Registration successful for "${workshop.title}"! You will receive a confirmation email shortly.`);
+        }
+    };
+
+    // Debug function to test GitHub API and raw README fetching
+    window.testGitHubAPI = async function() {
+        console.log('Testing GitHub API connection...');
+        try {
+            const response = await fetch(`${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos`);
+            console.log('GitHub API Response:', response);
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            // Check rate limit headers
+            const rateLimitRemaining = response.headers.get('x-ratelimit-remaining');
+            const rateLimitReset = response.headers.get('x-ratelimit-reset');
+            console.log('Rate limit remaining:', rateLimitRemaining);
+            console.log('Rate limit reset time:', rateLimitReset);
+            
+            if (response.ok) {
+                const repos = await response.json();
+                console.log('Repositories found:', repos);
+                
+                if (repos.length > 0) {
+                    const firstRepo = repos[0];
+                    console.log('Testing README fetch for first repo:', firstRepo.name);
+                    
+                    // Test raw GitHub URL approach
+                    const rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${firstRepo.name}/main/README.md`;
+                    console.log('Testing raw URL:', rawUrl);
+                    
+                    const readmeResponse = await fetch(rawUrl);
+                    console.log('Raw README Response:', readmeResponse);
+                    
+                    if (readmeResponse.ok) {
+                        const content = await readmeResponse.text();
+                        console.log('Raw README content:', content.substring(0, 500) + '...');
+                    } else {
+                        console.log('README not found for', firstRepo.name);
+                    }
+                }
+            } else {
+                const errorText = await response.text();
+                console.error('GitHub API error:', response.status, response.statusText);
+                console.error('Error details:', errorText);
+                
+                if (response.status === 403) {
+                    console.log('Rate limit exceeded. Using fallback repositories.');
+                    const fallbackRepos = getFallbackRepositories();
+                    console.log('Fallback repositories:', fallbackRepos);
+                }
+            }
+        } catch (error) {
+            console.error('GitHub API test failed:', error);
         }
     };
 
