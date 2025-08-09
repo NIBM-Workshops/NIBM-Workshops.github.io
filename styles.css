@@ -509,6 +509,35 @@ nav ul li a:hover {
     color: var(--primary-color);
 }
 
+.workshop-event-details {
+    margin-bottom: 0.75rem;
+    padding: 0.5rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--accent-color);
+}
+
+.event-time,
+.event-venue {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.event-time:last-child,
+.event-venue:last-child {
+    margin-bottom: 0;
+}
+
+.event-time i,
+.event-venue i {
+    color: var(--accent-color);
+    width: 14px;
+}
+
 .workshop-description {
     margin-bottom: 1.5rem;
     color: var(--text-secondary);
@@ -519,10 +548,11 @@ nav ul li a:hover {
 
 .workshop-footer {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     padding-top: 1rem;
     border-top: 1px solid var(--border-color);
+    text-align: center;
 }
 
 .workshop-instructor {
@@ -546,14 +576,20 @@ nav ul li a:hover {
 
 .workshop-actions {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    align-items: center;
+    margin-top: 1rem;
 }
 
 .workshop-actions .btn {
     font-size: 0.875rem;
-    padding: 0.5rem 1rem;
-    min-width: auto;
+    padding: 0.75rem 1.5rem;
+    min-width: 140px;
+    width: 140px;
+    border-radius: var(--radius-md);
+    text-align: center;
+    justify-content: center;
 }
 
 .workshop-experts {
@@ -1098,12 +1134,16 @@ nav ul li a:focus {
     
     .workshop-actions {
         flex-direction: column;
-        gap: 0.25rem;
+        gap: 0.5rem;
+        justify-content: center;
+        align-items: center;
     }
     
     .workshop-actions .btn {
-        width: 100%;
+        width: 200px;
+        min-width: 200px;
         justify-content: center;
+        text-align: center;
     }
     
     .workshop-experts,
@@ -1115,6 +1155,15 @@ nav ul li a:focus {
         display: block;
         margin-bottom: 0.5rem;
         text-align: center;
+    }
+    
+    .workshop-event-details {
+        padding: 0.25rem;
+    }
+    
+    .event-time,
+    .event-venue {
+        font-size: 0.75rem;
     }
 
     .stats {

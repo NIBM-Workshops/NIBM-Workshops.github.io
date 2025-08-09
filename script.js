@@ -129,8 +129,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Fetch README content from a repository using raw GitHub URL
     async function fetchReadme(repoName) {
         try {
-            // Try main branch first
-            let rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/main/README.md`;
+            // Try main branch first with cache busting
+            let rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/main/README.md?t=${Date.now()}`;
             console.log(`Fetching README from: ${rawUrl}`);
             
             let response = await fetch(rawUrl);
@@ -138,14 +138,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // If main branch doesn't work, try master branch
             if (!response.ok) {
                 console.log(`Main branch failed, trying master branch for ${repoName}`);
-                rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/master/README.md`;
+                rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/master/README.md?t=${Date.now()}`;
                 response = await fetch(rawUrl);
             }
             
             // If still not found, try README.md in root
             if (!response.ok) {
                 console.log(`Master branch failed, trying root README for ${repoName}`);
-                rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/README.md`;
+                rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${repoName}/README.md?t=${Date.now()}`;
                 response = await fetch(rawUrl);
             }
             
@@ -170,6 +170,8 @@ document.addEventListener('DOMContentLoaded', function() {
             title: repoName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
             category: 'technology', // default category
             date: null,
+            time: '',
+            venue: '',
             description: '',
             instructor: '',
             image: `https://source.unsplash.com/random/600x400/?${repoName}`,
@@ -199,6 +201,68 @@ document.addEventListener('DOMContentLoaded', function() {
         const imageMatch = readmeContent.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
         if (imageMatch) {
             workshop.image = imageMatch[1];
+        }
+
+        // Extract event details (new format)
+        const eventDetailsMatch = readmeContent.match(/## 📅 Event Details\s*\n((?:- \*\*.*?\*\*.*?\n?)+)/s);
+        if (eventDetailsMatch) {
+            const eventDetailsText = eventDetailsMatch[1];
+            console.log('Event Details Text:', eventDetailsText);
+            
+            // Extract date - fixed regex to match exact format
+            const dateMatch = eventDetailsText.match(/- \*\*Date:\*\* (.*?)(?=\n|$)/);
+            if (dateMatch) {
+                const dateText = dateMatch[1].trim();
+                workshop.date = dateText; // Store the original date text
+                console.log('Extracted Date:', dateText);
+                
+                // Also parse for internal date logic (upcoming/past categorization)
+                const datePatterns = [
+                    /(\d{1,2})(?:st|nd|rd|th)?\s+(\w+)\s+(\d{4})/i, // 15th August 2025
+                    /(\w{3}\s+\d{1,2},?\s+\d{4})/i, // Aug 15, 2025
+                    /(\d{4}-\d{2}-\d{2})/, // 2025-08-15
+                    /(\d{1,2}\/\d{1,2}\/\d{4})/, // 15/08/2025
+                ];
+                
+                for (const pattern of datePatterns) {
+                    const match = dateText.match(pattern);
+                    if (match) {
+                        try {
+                            const parsedDate = new Date(dateText);
+                            if (!isNaN(parsedDate.getTime())) {
+                                workshop.internalDate = parsedDate.toISOString().split('T')[0]; // For internal logic only
+                                console.log('Parsed Internal Date:', workshop.internalDate);
+                                break;
+                            }
+                        } catch (e) {
+                            // Continue to next pattern
+                        }
+                    }
+                }
+            } else {
+                console.log('No date match found in event details');
+            }
+            
+            // Extract time - fixed regex
+            const timeMatch = eventDetailsText.match(/- \*\*Time:\*\* (.*?)(?=\n|$)/);
+            if (timeMatch) {
+                workshop.time = timeMatch[1].trim();
+                console.log('Extracted Time:', workshop.time);
+            } else {
+                console.log('No time match found in event details');
+            }
+            
+            // Extract venue - fixed regex
+            const venueMatch = eventDetailsText.match(/- \*\*Venue:\*\* (.*?)(?=\n|$)/);
+            if (venueMatch) {
+                workshop.venue = venueMatch[1].trim();
+                console.log('Extracted Venue:', workshop.venue);
+            } else {
+                console.log('No venue match found in event details');
+            }
+        } else {
+            console.log('No event details section found in README');
+            console.log('Available sections:', readmeContent.match(/## .*/g));
         }
 
         // Extract featured experts
@@ -243,29 +307,6 @@ document.addEventListener('DOMContentLoaded', function() {
             workshop.registrationLink = registrationMatch[1];
         }
 
-        // Extract date from various patterns in the content
-        const datePatterns = [
-            /(\w{3}\s+\d{1,2},?\s+\d{4})/i, // Aug 12, 2025
-            /(\d{4}-\d{2}-\d{2})/, // 2025-08-12
-            /(\d{1,2}\/\d{1,2}\/\d{4})/, // 12/08/2025
-            /(\d{1,2}\s+\w{3}\s+\d{4})/i, // 12 Aug 2025
-        ];
-
-        for (const pattern of datePatterns) {
-            const match = readmeContent.match(pattern);
-            if (match) {
-                try {
-                    const date = new Date(match[1]);
-                    if (!isNaN(date.getTime())) {
-                        workshop.date = date.toISOString().split('T')[0];
-                        break;
-                    }
-                } catch (e) {
-                    // Continue to next pattern
-                }
-            }
-        }
-
         // Extract duration from content (look for patterns like "3 hours", "2 days", etc.)
         const durationMatch = readmeContent.match(/(\d+)\s+(hours?|days?|weeks?)/i);
         if (durationMatch) {
@@ -303,13 +344,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // If no instructor found, use a default one
-        if (!workshop.instructor) {
-            workshop.instructor = 'NIBM Expert';
-        }
+        
 
         // Determine if workshop is upcoming or past
-        if (workshop.date) {
-            const workshopDate = new Date(workshop.date);
+        if (workshop.internalDate) {
+            const workshopDate = new Date(workshop.internalDate);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
@@ -319,9 +358,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 workshop.category = 'past';
             }
         } else {
-            // If no date found, assume it's upcoming
+            // If no date found, assume it's upcoming but don't set a default date
             workshop.category = 'upcoming';
-            workshop.date = new Date().toISOString().split('T')[0];
+            if (!workshop.date) {
+                workshop.date = 'TBD';
+            }
         }
 
         return workshop;
@@ -359,7 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            console.log(`Found ${repos.length} repositories, fetching README files...`);
+            console.log(`Found ${repos.length} repositories:`, repos.map(r => r.name));
 
             // Fetch README for each repository
             const workshopPromises = repos.map(async (repo) => {
@@ -368,7 +409,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (readmeContent) {
                     const workshop = parseWorkshopFromReadme(readmeContent, repo.name);
                     console.log(`Parsed workshop for ${repo.name}:`, workshop);
-                    return workshop;
+                    
+                    // Only return workshops that have meaningful content
+                    if (workshop.title && (workshop.description || workshop.date || workshop.time || workshop.venue)) {
+                        console.log(`✅ ${repo.name} contains workshop content`);
+                        return workshop;
+                    } else {
+                        console.log(`❌ Skipping ${repo.name} - no workshop content found`);
+                        return null;
+                    }
                 }
                 console.log(`No README content found for ${repo.name}`);
                 return null;
@@ -433,14 +482,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 workshopCard.className = 'workshop-card';
                 workshopCard.style.animationDelay = `${index * 0.1}s`;
                 
-            const formattedDate = workshop.date ? new Date(workshop.date).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-            }) : 'TBD';
-                
-            const daysUntil = workshop.date ? Math.ceil((new Date(workshop.date) - new Date()) / (1000 * 60 * 60 * 24)) : null;
-            const dateStatus = daysUntil !== null ? (daysUntil > 0 ? `${daysUntil} days away` : 'Today') : '';
+                        const formattedDate = workshop.date || 'TBD';
+            console.log('Displaying workshop:', workshop.title);
+            console.log('Date to display:', formattedDate);
+            console.log('Time to display:', workshop.time);
+            console.log('Venue to display:', workshop.venue);
                 
                 workshopCard.innerHTML = `
                     <div class="workshop-image">
@@ -459,9 +505,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="workshop-date">
                             <i class="far fa-calendar-alt"></i>
                             ${formattedDate}
-                        ${isUpcoming && dateStatus ? `<span class="date-status">${dateStatus}</span>` : ''}
                     </div>
-                    <p class="workshop-description">${workshop.description}</p>
+                    ${workshop.time || workshop.venue ? `
+                        <div class="workshop-event-details">
+                            ${workshop.time ? `<div class="event-time"><i class="far fa-clock"></i> ${workshop.time}</div>` : ''}
+                            ${workshop.venue ? `<div class="event-venue"><i class="fas fa-map-marker-alt"></i> ${workshop.venue}</div>` : ''}
+                        </div>
+                    ` : ''}
+                        <p class="workshop-description">${workshop.description}</p>
                     ${workshop.featuredExperts.length > 0 ? `
                         <div class="workshop-experts">
                             <strong><i class="fas fa-users"></i> Featured Experts:</strong>
@@ -481,28 +532,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     ` : ''}
                         <div class="workshop-footer">
-                            <div class="workshop-instructor">
-                                <img src="https://source.unsplash.com/random/100x100/?portrait,${workshop.instructor.split(' ')[0]}" alt="${workshop.instructor}" loading="lazy">
-                                <span>${workshop.instructor}</span>
-                            </div>
-                        <div class="workshop-actions">
-                            ${isUpcoming ? 
-                                (workshop.registrationLink ? 
-                                    `<a href="${workshop.registrationLink}" class="btn btn-success" target="_blank" rel="noopener">
-                                        <i class="fas fa-user-plus"></i> Register Now
-                                    </a>` :
-                                    `<button class="btn btn-success" onclick="registerWorkshop('${workshop.id}')">
-                                    <i class="fas fa-user-plus"></i> Register
+                            <div class="workshop-actions">
+                                ${isUpcoming ? 
+                                    (workshop.registrationLink ? 
+                                        `<a href="${workshop.registrationLink}" class="btn btn-success" target="_blank" rel="noopener">
+                                            <i class="fas fa-user-plus"></i> Register Now
+                                        </a>` :
+                                        `<button class="btn btn-success" onclick="registerWorkshop('${workshop.id}')">
+                                        <i class="fas fa-user-plus"></i> Register
+                                        </button>`
+                                    ) : 
+                                    `<button class="btn btn-outline" disabled>
+                                        <i class="fas fa-check-circle"></i> Completed
                                     </button>`
-                                ) : 
-                                `<button class="btn btn-outline" disabled>
-                                    <i class="fas fa-check-circle"></i> Completed
-                                </button>`
-                            }
-                            <a href="${workshop.repoUrl}" class="btn btn-outline" target="_blank" rel="noopener">
-                                <i class="fab fa-github"></i> View Details
-                            </a>
-                        </div>
+                                }
+                                <a href="${workshop.repoUrl}" class="btn btn-outline" target="_blank" rel="noopener">
+                                    <i class="fab fa-github"></i> View Details
+                                </a>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -556,208 +603,4 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Manually refreshing workshops...');
         loadWorkshopsFromGitHub();
     };
-
-    // Test function specifically for Git-Github repository
-    window.testGitGithubReadme = async function() {
-        console.log('Testing Git-Github README fetch...');
-        try {
-            const rawUrl = 'https://raw.githubusercontent.com/NIBM-Workshops/Git-Github/main/README.md';
-            console.log('Fetching from:', rawUrl);
-            
-            const response = await fetch(rawUrl);
-            console.log('Response status:', response.status);
-            
-            if (response.ok) {
-                const content = await response.text();
-                console.log('Git-Github README content:', content);
-                
-                // Test parsing
-                const workshop = parseWorkshopFromReadme(content, 'Git-Github');
-                console.log('Parsed workshop data:', workshop);
-                
-                return workshop;
-            } else {
-                console.error('Failed to fetch Git-Github README:', response.status);
-                return null;
-            }
-        } catch (error) {
-            console.error('Error testing Git-Github README:', error);
-            return null;
-        }
-    };
-
-    // Enhanced filter event listeners with debouncing
-    document.getElementById('upcomingFilter').addEventListener('change', function() {
-        const filtered = filterWorkshops(workshops.upcoming, this.value);
-        displayWorkshops(filtered, 'upcomingWorkshops');
-    });
-
-    document.getElementById('pastFilter').addEventListener('change', function() {
-        const searchTerm = document.getElementById('pastSearch').value;
-        const filtered = filterWorkshops(workshops.past, this.value, searchTerm);
-        displayWorkshops(filtered, 'pastWorkshops', false);
-    });
-
-    const debouncedSearch = debounce(function() {
-        const category = document.getElementById('pastFilter').value;
-        const searchTerm = document.getElementById('pastSearch').value;
-        const filtered = filterWorkshops(workshops.past, category, searchTerm);
-        displayWorkshops(filtered, 'pastWorkshops', false);
-    }, 300);
-
-    document.getElementById('pastSearch').addEventListener('input', debouncedSearch);
-
-    // Enhanced smooth scrolling with offset
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function(e) {
-            e.preventDefault();
-            
-            const targetId = this.getAttribute('href');
-            const targetElement = document.querySelector(targetId);
-            
-            if (targetElement) {
-                const headerHeight = header.offsetHeight;
-                const targetPosition = targetElement.offsetTop - headerHeight - 20;
-                
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
-                
-                // Close mobile menu if open
-                if (nav.classList.contains('active')) {
-                    nav.classList.remove('active');
-                    body.style.overflow = '';
-                    menuToggle.querySelector('i').className = 'fas fa-bars';
-                }
-            }
-        });
-    });
-
-    // Add intersection observer for animations
-    const observerOptions = {
-        threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px'
-    };
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
-            }
-        });
-    }, observerOptions);
-
-    // Observe workshop cards for animation
-    document.addEventListener('DOMContentLoaded', function() {
-        const cards = document.querySelectorAll('.workshop-card');
-        cards.forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
-        });
-    });
-
-    // Global function for workshop registration
-    window.registerWorkshop = function(workshopId) {
-        const workshop = workshops.upcoming.find(w => w.id === workshopId);
-        if (workshop) {
-            // Show registration modal or notification
-            alert(`Registration successful for "${workshop.title}"! You will receive a confirmation email shortly.`);
-        }
-    };
-
-    // Debug function to test GitHub API and raw README fetching
-    window.testGitHubAPI = async function() {
-        console.log('Testing GitHub API connection...');
-        try {
-            const response = await fetch(`${GITHUB_API_BASE}/orgs/${ORGANIZATION}/repos`);
-            console.log('GitHub API Response:', response);
-            console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
-            
-            // Check rate limit headers
-            const rateLimitRemaining = response.headers.get('x-ratelimit-remaining');
-            const rateLimitReset = response.headers.get('x-ratelimit-reset');
-            console.log('Rate limit remaining:', rateLimitRemaining);
-            console.log('Rate limit reset time:', rateLimitReset);
-            
-            if (response.ok) {
-                const repos = await response.json();
-                console.log('Repositories found:', repos);
-                
-                if (repos.length > 0) {
-                    const firstRepo = repos[0];
-                    console.log('Testing README fetch for first repo:', firstRepo.name);
-                    
-                    // Test raw GitHub URL approach
-                    const rawUrl = `https://raw.githubusercontent.com/${ORGANIZATION}/${firstRepo.name}/main/README.md`;
-                    console.log('Testing raw URL:', rawUrl);
-                    
-                    const readmeResponse = await fetch(rawUrl);
-                    console.log('Raw README Response:', readmeResponse);
-                    
-                    if (readmeResponse.ok) {
-                        const content = await readmeResponse.text();
-                        console.log('Raw README content:', content.substring(0, 500) + '...');
-                    } else {
-                        console.log('README not found for', firstRepo.name);
-                    }
-                }
-            } else {
-                const errorText = await response.text();
-                console.error('GitHub API error:', response.status, response.statusText);
-                console.error('Error details:', errorText);
-                
-                if (response.status === 403) {
-                    console.log('Rate limit exceeded. Using fallback repositories.');
-                    const fallbackRepos = getFallbackRepositories();
-                    console.log('Fallback repositories:', fallbackRepos);
-                }
-            }
-        } catch (error) {
-            console.error('GitHub API test failed:', error);
-        }
-    };
-
-    // Add keyboard navigation support
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && nav.classList.contains('active')) {
-            nav.classList.remove('active');
-            body.style.overflow = '';
-            menuToggle.querySelector('i').className = 'fas fa-bars';
-        }
-    });
-
-    // Add loading animation for images
-    document.addEventListener('DOMContentLoaded', function() {
-        const images = document.querySelectorAll('img');
-        images.forEach(img => {
-            img.addEventListener('load', function() {
-                this.style.opacity = '1';
-            });
-            img.style.opacity = '0';
-            img.style.transition = 'opacity 0.3s ease';
-        });
-    });
-
-    // Scroll to top functionality
-    const scrollToTopBtn = document.getElementById('scrollToTop');
-    
-    window.addEventListener('scroll', function() {
-        if (window.pageYOffset > 300) {
-            scrollToTopBtn.classList.add('visible');
-        } else {
-            scrollToTopBtn.classList.remove('visible');
-        }
-    });
-    
-    scrollToTopBtn.addEventListener('click', function() {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
-    });
 });
